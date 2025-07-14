@@ -2,65 +2,74 @@ import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 
+// DELETE /api/todo/[id]
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  const id = params.id;
 
-export async function DELETE(request: Request, { params } : { params: { id: string}}){
-    const session = await getServerSession(authOptions);
-    const todo_id = params.id;
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  if (!id) {
+    return new Response("Missing todo id", { status: 400 });
+  }
 
-    if(!session){
-        return new Response("Unautharized", {status: 401});
-    }
-    const todo = await prisma.todo.findUnique({
-        where: {
-            id: todo_id,
-        }
-    })
+  const todo = await prisma.todo.findUnique({
+    where: { id },
+  });
 
-    if(!todo){
-        return new Response("Todo not found", { status: 404 })
-    }
-    if(todo.userId !== session.user.id){
-        return new Response("Forbidden", { status: 403})
-    }
+  if (!todo) {
+    return new Response("Todo not found", { status: 404 });
+  }
+  if (todo.userId !== session.user.id) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
-    await prisma.todo.delete({
-        where : {id : todo_id}
-    })
+  await prisma.todo.delete({
+    where: { id },
+  });
 
-    return new Response("Todo Deleted", {status: 200});
+  return new Response("Todo Deleted", { status: 200 });
 }
 
-export async function POST(request: Request, { params } : { params: { id: string}}){
-    const session = await getServerSession(authOptions);
-    const todo_id = params.id;
+// PUT /api/todo/[id]
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  const session = await getServerSession(authOptions);
+  const id = params.id;
 
-    if(!session){
-        return new Response("Unautharized", {status: 401});
-    }
-    const todo = await prisma.todo.findUnique({
-        where: {
-            id: todo_id,
-        }
-    });
-    
-    if(!todo){
-        return new Response("Todo not found", { status: 404 })
-    }
-    if(todo.userId !== session.user.id){
-        return new Response("Forbidden", { status: 403})
-    }
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  if (!id) {
+    return new Response("Missing todo id", { status: 400 });
+  }
 
-    const {title ,completed } = await request.json();
-    
-    await prisma.todo.update({
-        where: {
-            id: todo_id
-        },
-        data: {
-            title: title,
-            completed: completed
-        }
-    })
+  const todo = await prisma.todo.findUnique({
+    where: { id },
+  });
 
-    return new Response("Todo Updated", {status: 200});
+  if (!todo) {
+    return new Response("Todo not found", { status: 404 });
+  }
+  if (todo.userId !== session.user.id) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  const { title, completed } = await request.json();
+
+  const updated = await prisma.todo.update({
+    where: { id },
+    data: { title, completed },
+  });
+
+  return new Response(JSON.stringify(updated), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }
